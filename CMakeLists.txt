@@ -54,70 +54,70 @@ add_compile_definitions(GNUSTEP __OBJC_RUNTIME_INTERNAL__=1)
 
 set(CMAKE_CXX_STANDARD 17)
 
-set(libobjc_ASM_SRCS 
-	block_trampolines.S
-	objc_msgSend.S)
-set(libobjc_OBJCXX_SRCS 
-	arc.mm
+set(libobjc_ASM_SRCS
+	Source/block_trampolines.S
+	Source/objc_msgSend.S)
+set(libobjc_OBJCXX_SRCS
+	Source/arc.mm
 	)
-set(libobjc_OBJC_SRCS 
-	NSBlocks.m
-	Protocol2.m
-	associate.m
-	blocks_runtime.m
-	properties.m)
-set(libobjc_C_SRCS 
-	alias_table.c
-	block_to_imp.c
-	caps.c
-	category_loader.c
-	class_table.c
-	dtable.c
-	encoding2.c
-	gc_none.c
-	hooks.c
-	ivar.c
-	loader.c
-	mutation.m
-	protocol.c
-	runtime.c
-	sarray2.c
-	sendmsg2.c
+set(libobjc_OBJC_SRCS
+	Source/NSBlocks.m
+	Source/Protocol2.m
+	Source/associate.m
+	Source/blocks_runtime.m
+	Source/properties.m)
+set(libobjc_C_SRCS
+	Source/alias_table.c
+	Source/block_to_imp.c
+	Source/caps.c
+	Source/category_loader.c
+	Source/class_table.c
+	Source/dtable.c
+	Source/encoding2.c
+	Source/gc_none.c
+	Source/hooks.c
+	Source/ivar.c
+	Source/loader.c
+	Source/mutation.m
+	Source/protocol.c
+	Source/runtime.c
+	Source/sarray2.c
+	Source/sendmsg2.c
 	)
 set(libobjc_HDRS
-	objc/Availability.h
-	objc/Object.h
-	objc/Protocol.h
-	objc/blocks_private.h
-	objc/blocks_runtime.h
-	objc/capabilities.h
-	objc/developer.h
-	objc/encoding.h
-	objc/hooks.h
-	objc/message.h
-	objc/objc-api.h
-	objc/objc-arc.h
-	objc/objc-auto.h
-	objc/objc-class.h
-	objc/objc-exception.h
-	objc/objc-runtime.h
-	objc/objc-visibility.h
-	objc/objc.h
-	objc/runtime-deprecated.h
-	objc/runtime.h
-	objc/slot.h)
+	Headers/objc/Availability.h
+	Headers/objc/Object.h
+	Headers/objc/Protocol.h
+	Headers/objc/blocks_private.h
+	Headers/objc/blocks_runtime.h
+	Headers/objc/capabilities.h
+	Headers/objc/developer.h
+	Headers/objc/encoding.h
+	Headers/objc/hooks.h
+	Headers/objc/message.h
+	Headers/objc/objc-api.h
+	Headers/objc/objc-arc.h
+	Headers/objc/objc-auto.h
+	Headers/objc/objc-class.h
+	Headers/objc/objc-exception.h
+	Headers/objc/objc-runtime.h
+	Headers/objc/objc-visibility.h
+	Headers/objc/objc.h
+	Headers/objc/runtime-deprecated.h
+	Headers/objc/runtime.h
+	Headers/objc/slot.h)
 set(libBlocksRuntime_COMPATIBILITY_HDRS
-	Block.h
-	Block_private.h
+	Headers/Block.h
+	Headers/Block_private.h
 	)
 set(libobjc_CXX_SRCS
-	selector_table.cc
+	Source/selector_table.cc
 	)
 # Windows does not use DWARF EH
 if (WIN32)
-	list(APPEND libobjc_CXX_SRCS eh_win32_msvc.cc)
+	list(APPEND libobjc_CXX_SRCS Source/eh_win32_msvc.cc)
 else ()
-	list(APPEND libobjc_C_SRCS eh_personality.c)
+	list(APPEND libobjc_C_SRCS Source/eh_personality.c)
 endif (WIN32)
 
 if (NOT EXISTS "${CMAKE_SOURCE_DIR}/third_party/robin-map/include/tsl/robin_map.h")
@@ -156,12 +156,12 @@ add_compile_definitions($<$<BOOL:${ENABLE_TRACING}>:WITH_TRACING=1>)
 add_compile_definitions($<$<BOOL:${DEBUG_ARC_COMPAT}>:DEBUG_ARC_COMPAT>)
 
 if (OLDABI_COMPAT)
-	list(APPEND libobjc_C_SRCS legacy.c abi_version.c statics_loader.c)
+	list(APPEND libobjc_C_SRCS Source/legacy.c Source/abi_version.c Source/statics_loader.c)
 	add_definitions(-DOLDABI_COMPAT=1)
 endif()
 
 if (LEGACY_COMPAT)
-	list(APPEND libobjc_C_SRCS legacy_malloc.c)
+	list(APPEND libobjc_C_SRCS Source/legacy_malloc.c)
 else ()
 	add_definitions(-DNO_LEGACY)
 endif ()
@@ -192,15 +192,15 @@ if (MSVC)
 	message(STATUS "ASM compiler: ${ASSEMBLER}")
 	# CMake is completely broken when you try to build assembly files on Windows.
 	add_custom_command(OUTPUT block_trampolines.obj
-		COMMAND echo ${ASSEMBLER} ${ASM_TARGET} -c "${CMAKE_SOURCE_DIR}/block_trampolines.S" -o "${CMAKE_BINARY_DIR}/block_trampolines.obj"
-		COMMAND ${ASSEMBLER} ${ASM_TARGET} -c "${CMAKE_SOURCE_DIR}/block_trampolines.S" -o "${CMAKE_BINARY_DIR}/block_trampolines.obj"
-		MAIN_DEPENDENCY block_trampolines.S
+		COMMAND echo ${ASSEMBLER} ${ASM_TARGET} -c "${CMAKE_SOURCE_DIR}/Source/block_trampolines.S" -o "${CMAKE_BINARY_DIR}/block_trampolines.obj"
+		COMMAND ${ASSEMBLER} ${ASM_TARGET} -c "${CMAKE_SOURCE_DIR}/Source/block_trampolines.S" -o "${CMAKE_BINARY_DIR}/block_trampolines.obj"
+		MAIN_DEPENDENCY Source/block_trampolines.S
 	)
 	add_custom_command(OUTPUT objc_msgSend.obj
-		COMMAND echo ${ASSEMBLER} ${ASM_TARGET} -c "${CMAKE_SOURCE_DIR}/objc_msgSend.S" -o "${CMAKE_BINARY_DIR}/objc_msgSend.obj"
-		COMMAND ${ASSEMBLER} ${ASM_TARGET} -c "${CMAKE_SOURCE_DIR}/objc_msgSend.S" -o "${CMAKE_BINARY_DIR}/objc_msgSend.obj"
-		MAIN_DEPENDENCY objc_msgSend.S
-		DEPENDS objc_msgSend.aarch64.S objc_msgSend.arm.S objc_msgSend.mips.S objc_msgSend.x86-32.S objc_msgSend.x86-64.S
+		COMMAND echo ${ASSEMBLER} ${ASM_TARGET} -c "${CMAKE_SOURCE_DIR}/Source/objc_msgSend.S" -o "${CMAKE_BINARY_DIR}/objc_msgSend.obj"
+		COMMAND ${ASSEMBLER} ${ASM_TARGET} -c "${CMAKE_SOURCE_DIR}/Source/objc_msgSend.S" -o "${CMAKE_BINARY_DIR}/objc_msgSend.obj"
+		MAIN_DEPENDENCY Source/objc_msgSend.S
+		DEPENDS Source/objc_msgSend.aarch64.S Source/objc_msgSend.arm.S Source/objc_msgSend.mips.S Source/objc_msgSend.x86-32.S Source/objc_msgSend.x86-64.S
 	)
 	set(libobjc_ASM_OBJS block_trampolines.obj objc_msgSend.obj)
 endif()
@@ -214,11 +214,11 @@ else ()
 	if (CMAKE_CXX_COMPILER_TARGET)
 		list(APPEND EH_PERSONALITY_FLAGS "${CMAKE_CXX_COMPILE_OPTIONS_TARGET}${CMAKE_CXX_COMPILER_TARGET}")
 	endif ()
-	add_custom_command(OUTPUT eh_trampoline.S
-		COMMAND ${CMAKE_CXX_COMPILER} ARGS ${EH_PERSONALITY_FLAGS} -fPIC -S "${CMAKE_SOURCE_DIR}/eh_trampoline.cc" -o - -fexceptions -fno-inline | sed "s/__gxx_personality_v0/test_eh_personality/g" > "${CMAKE_BINARY_DIR}/eh_trampoline.S"
-		MAIN_DEPENDENCY eh_trampoline.cc)
-	list(APPEND libobjc_ASM_SRCS eh_trampoline.S)
-	list(APPEND libobjc_CXX_SRCS objcxx_eh.cc)
+	add_custom_command(OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/eh_trampoline.S
+		COMMAND ${CMAKE_CXX_COMPILER} ARGS ${EH_PERSONALITY_FLAGS} -fPIC -S "${CMAKE_SOURCE_DIR}/Source/eh_trampoline.cc" -o - -fexceptions -fno-inline | sed "s/__gxx_personality_v0/test_eh_personality/g" > "${CMAKE_BINARY_DIR}/eh_trampoline.S"
+		MAIN_DEPENDENCY Source/eh_trampoline.cc)
+	list(APPEND libobjc_ASM_SRCS ${CMAKE_CURRENT_BINARY_DIR}//eh_trampoline.S)
+	list(APPEND libobjc_CXX_SRCS Source/objcxx_eh.cc)
 	# Find libm for linking, as some versions of libc++ don't link against it
 	find_library(M_LIBRARY m)
 endif ()
@@ -227,6 +227,11 @@ add_library(objc SHARED ${libobjc_C_SRCS} ${libobjc_ASM_SRCS} ${libobjc_OBJC_SRC
 
 list(APPEND libobjc_CXX_SRCS ${libobjcxx_CXX_SRCS})
 target_sources(objc PRIVATE ${libobjc_CXX_SRCS})
+target_include_directories(objc
+		PUBLIC
+		Headers
+		PRIVATE
+		third_party/robin-map/include)
 
 include(FindThreads)
 target_link_libraries(objc Threads::Threads)
