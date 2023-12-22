@@ -126,8 +126,7 @@ endif()
 
 if (LEGACY_COMPAT)
 	list(APPEND libobjc_C_SRCS Source/legacy_malloc.c)
-else ()
-	add_definitions(-DNO_LEGACY)
+	add_definitions(-DGNU_LEGACY)
 endif ()
 
 set(LIBOBJC_NAME "objc" CACHE STRING 
