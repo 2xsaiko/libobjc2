@@ -1,0 +1,24 @@
+target_sources(objc
+        PUBLIC FILE_SET HEADERS
+        FILES
+        Availability.h
+        Object.h
+        Protocol.h
+        blocks_private.h
+        blocks_runtime.h
+        capabilities.h
+        developer.h
+        encoding.h
+        hooks.h
+        message.h
+        objc-api.h
+        objc-arc.h
+        objc-auto.h
+        objc-class.h
+        objc-exception.h
+        objc-runtime.h
+        objc-visibility.h
+        objc.h
+        runtime-deprecated.h
+        runtime.h
+        slot.h)
