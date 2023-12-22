@@ -228,10 +228,13 @@ add_library(objc SHARED ${libobjc_C_SRCS} ${libobjc_ASM_SRCS} ${libobjc_OBJC_SRC
 list(APPEND libobjc_CXX_SRCS ${libobjcxx_CXX_SRCS})
 target_sources(objc PRIVATE ${libobjc_CXX_SRCS})
 target_include_directories(objc
-		PUBLIC
-		Headers
 		PRIVATE
 		third_party/robin-map/include)
+target_sources(objc
+		PUBLIC FILE_SET HEADERS
+		BASE_DIRS Headers
+		FILES
+		${libobjc_HDRS})
 
 include(FindThreads)
 target_link_libraries(objc Threads::Threads)
