@@ -84,32 +84,6 @@ set(libobjc_C_SRCS
 	Source/sarray2.c
 	Source/sendmsg2.c
 	)
-set(libobjc_HDRS
-	Headers/objc/Availability.h
-	Headers/objc/Object.h
-	Headers/objc/Protocol.h
-	Headers/objc/blocks_private.h
-	Headers/objc/blocks_runtime.h
-	Headers/objc/capabilities.h
-	Headers/objc/developer.h
-	Headers/objc/encoding.h
-	Headers/objc/hooks.h
-	Headers/objc/message.h
-	Headers/objc/objc-api.h
-	Headers/objc/objc-arc.h
-	Headers/objc/objc-auto.h
-	Headers/objc/objc-class.h
-	Headers/objc/objc-exception.h
-	Headers/objc/objc-runtime.h
-	Headers/objc/objc-visibility.h
-	Headers/objc/objc.h
-	Headers/objc/runtime-deprecated.h
-	Headers/objc/runtime.h
-	Headers/objc/slot.h)
-set(libBlocksRuntime_COMPATIBILITY_HDRS
-	Headers/Block.h
-	Headers/Block_private.h
-	)
 set(libobjc_CXX_SRCS
 	Source/selector_table.cc
 	)
@@ -169,9 +143,6 @@ endif ()
 set(LIBOBJC_NAME "objc" CACHE STRING 
 	"Name of the Objective-C runtime library (e.g. objc2 for libobjc2)")
 
-set(INCLUDE_DIRECTORY "objc" CACHE STRING 
-	"Subdirectory of the include path to install the headers.")
-
 add_compile_options("$<$<OR:$<COMPILE_LANGUAGE:OBJC>,$<COMPILE_LANGUAGE:OBJCXX>>:-Wno-deprecated-objc-isa-usage;-Wno-objc-root-class;-fobjc-runtime=gnustep-2.0>$<$<COMPILE_LANGUAGE:C>:-Xclang;-fexceptions>")
 add_compile_options($<$<STREQUAL:${CMAKE_SYSTEM_PROCESSOR},i686>:-march=i586>)
 
@@ -217,7 +188,7 @@ else ()
 	add_custom_command(OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/eh_trampoline.S
 		COMMAND ${CMAKE_CXX_COMPILER} ARGS ${EH_PERSONALITY_FLAGS} -fPIC -S "${CMAKE_SOURCE_DIR}/Source/eh_trampoline.cc" -o - -fexceptions -fno-inline | sed "s/__gxx_personality_v0/test_eh_personality/g" > "${CMAKE_BINARY_DIR}/eh_trampoline.S"
 		MAIN_DEPENDENCY Source/eh_trampoline.cc)
-	list(APPEND libobjc_ASM_SRCS ${CMAKE_CURRENT_BINARY_DIR}//eh_trampoline.S)
+	list(APPEND libobjc_ASM_SRCS ${CMAKE_CURRENT_BINARY_DIR}/eh_trampoline.S)
 	list(APPEND libobjc_CXX_SRCS Source/objcxx_eh.cc)
 	# Find libm for linking, as some versions of libc++ don't link against it
 	find_library(M_LIBRARY m)
@@ -230,11 +201,6 @@ target_sources(objc PRIVATE ${libobjc_CXX_SRCS})
 target_include_directories(objc
 		PRIVATE
 		third_party/robin-map/include)
-target_sources(objc
-		PUBLIC FILE_SET HEADERS
-		BASE_DIRS Headers
-		FILES
-		${libobjc_HDRS})
 
 include(FindThreads)
 target_link_libraries(objc Threads::Threads)
@@ -322,10 +288,8 @@ install(TARGETS ${INSTALL_TARGETS}
 	RUNTIME DESTINATION ${LIB_INSTALL_PATH}
 	LIBRARY DESTINATION ${LIB_INSTALL_PATH}
 	ARCHIVE DESTINATION ${LIB_INSTALL_PATH})
-install(FILES ${libobjc_HDRS}
-	DESTINATION "${HEADER_INSTALL_PATH}/${INCLUDE_DIRECTORY}")
-install(FILES ${libBlocksRuntime_COMPATIBILITY_HDRS}
-	DESTINATION "${HEADER_INSTALL_PATH}")
+install(TARGETS objc
+	FILE_SET HEADERS DESTINATION "${HEADER_INSTALL_PATH}")
 
 set(CPACK_GENERATOR TGZ CACHE STRING
 	"Installer types to generate.  Sensible options include TGZ, RPM and DEB")
@@ -384,3 +348,6 @@ CHECK_CXX_SOURCE_COMPILES("
 	int main() { return 0; }" CXA_ALLOCATE_EXCEPTION_NOEXCEPT_COMPILES)
 
 add_compile_definitions($<IF:$<BOOL:${CXA_ALLOCATE_EXCEPTION_NOEXCEPT_COMPILES}>,CXA_ALLOCATE_EXCEPTION_SPECIFIER=noexcept,CXA_ALLOCATE_EXCEPTION_SPECIFIER>)
+
+add_subdirectory(Headers)
+add_subdirectory(Source)
