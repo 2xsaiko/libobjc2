@@ -26,6 +26,7 @@ enable_language(OBJC OBJCXX)
 list(APPEND CMAKE_MODULE_PATH
 		${CMAKE_SOURCE_DIR}/CMake)
 
+include(CMakePackageConfigHelpers)
 include(DetectArch)
 include(FindThreads)
 include(GNUInstallDirs)
@@ -152,6 +153,22 @@ install(FILES "${CMAKE_CURRENT_BINARY_DIR}/libobjc.pc"
 	DESTINATION "${CMAKE_INSTALL_LIBDIR}/pkgconfig"
 )
 
+# Install CMake package
+
+configure_package_config_file(
+        objc-config.cmake.in
+        ${CMAKE_CURRENT_BINARY_DIR}/objc-config.cmake
+        INSTALL_DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/nucom)
+
+write_basic_package_version_file(
+        ${CMAKE_CURRENT_BINARY_DIR}/objc-config-version.cmake
+        COMPATIBILITY SameMinorVersion)
+
+install(
+		FILES
+		${CMAKE_CURRENT_BINARY_DIR}/objc-config.cmake
+		${CMAKE_CURRENT_BINARY_DIR}/objc-config-version.cmake
+		DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/objc)
 
 # uninstall target
 configure_file(
