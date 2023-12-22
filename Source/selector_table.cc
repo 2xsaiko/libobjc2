@@ -664,7 +664,7 @@ extern "C" PRIVATE void objc_register_selector_array(SEL selectors, unsigned lon
  * All of the functions in this section are deprecated and should not be used
  * in new code.
  */
-#ifndef NO_LEGACY
+#ifdef GNU_LEGACY
 SEL sel_get_typed_uid (const char *name, const char *types)
 {
 	if (nullptr == name) { return nullptr; }
@@ -737,5 +737,5 @@ BOOL sel_eq(SEL s1, SEL s2)
 	return sel_isEqual(s1, s2);
 }
 
-#endif // NO_LEGACY
+#endif // GNU_LEGACY
 }

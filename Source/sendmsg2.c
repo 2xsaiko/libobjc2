@@ -428,7 +428,7 @@ IMP class_getMethodImplementation_stret(Class cls, SEL name)
 // Legacy compatibility
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef NO_LEGACY
+#ifdef GNU_LEGACY
 /**
  * Legacy message lookup function.
  */

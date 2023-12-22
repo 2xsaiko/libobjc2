@@ -5,7 +5,7 @@
 #else
 #	define PRIVATE  __attribute__ ((visibility("hidden")))
 #endif
-#ifdef NO_LEGACY
+#ifndef GNU_LEGACY
 #	define LEGACY PRIVATE
 #else
 #	define LEGACY OBJC_PUBLIC
