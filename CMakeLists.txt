@@ -1,4 +1,7 @@
-cmake_minimum_required(VERSION 3.16)
+cmake_minimum_required(VERSION 3.20)
+cmake_policy(SET CMP0118 NEW)
+
+set(CMAKE_CXX_STANDARD 17)
 
 project(libobjc VERSION 4.6 LANGUAGES C ASM CXX)
 
@@ -24,7 +27,16 @@ list(APPEND CMAKE_MODULE_PATH
 		${CMAKE_SOURCE_DIR}/CMake)
 
 include(DetectArch)
+include(FindThreads)
+include(GNUInstallDirs)
 
+if (NOT EXISTS "${CMAKE_SOURCE_DIR}/third_party/robin-map/include/tsl/robin_map.h")
+	message(FATAL_ERROR "Git submodules not present, please run:\n\n"
+			" $ git submodule init && git submodule update\n\n"
+			"If you did not checkout via git, you will need to"
+			"fetch the submodule's contents from"
+			"https://github.com/Tessil/robin-map/")
+endif ()
 
 if (MSVC)
 	set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} /EHas")
@@ -35,64 +47,6 @@ if (MSVC)
 	set(objc_LINK_FLAGS "/DEBUG /INCREMENTAL:NO ${objc_LINK_FLAGS}")
 endif()
 
-detect_arch(ARCHITECTURE)
-set(ARCHITECTURE ${ARCHITECTURE} CACHE STRING "Architecture Type")
-message(STATUS "Architecture: ${ARCHITECTURE}")
-
-# Build configuration
-add_compile_definitions(GNUSTEP __OBJC_RUNTIME_INTERNAL__=1)
-
-set(CMAKE_CXX_STANDARD 17)
-
-set(libobjc_ASM_SRCS
-	Source/block_trampolines.S
-	Source/objc_msgSend.S)
-set(libobjc_OBJCXX_SRCS
-	Source/arc.mm
-	)
-set(libobjc_OBJC_SRCS
-	Source/NSBlocks.m
-	Source/Protocol2.m
-	Source/associate.m
-	Source/blocks_runtime.m
-	Source/properties.m)
-set(libobjc_C_SRCS
-	Source/alias_table.c
-	Source/block_to_imp.c
-	Source/caps.c
-	Source/category_loader.c
-	Source/class_table.c
-	Source/dtable.c
-	Source/encoding2.c
-	Source/gc_none.c
-	Source/hooks.c
-	Source/ivar.c
-	Source/loader.c
-	Source/mutation.m
-	Source/protocol.c
-	Source/runtime.c
-	Source/sarray2.c
-	Source/sendmsg2.c
-	)
-set(libobjc_CXX_SRCS
-	Source/selector_table.cc
-	)
-# Windows does not use DWARF EH
-if (WIN32)
-	list(APPEND libobjc_CXX_SRCS Source/eh_win32_msvc.cc)
-else ()
-	list(APPEND libobjc_C_SRCS Source/eh_personality.c)
-endif (WIN32)
-
-if (NOT EXISTS "${CMAKE_SOURCE_DIR}/third_party/robin-map/include/tsl/robin_map.h")
-	message(FATAL_ERROR "Git submodules not present, please run:\n\n"
-						" $ git submodule init && git submodule update\n\n"
-						"If you did not checkout via git, you will need to"
-						"fetch the submodule's contents from"
-						"https://github.com/Tessil/robin-map/")
-endif ()
-
-
 if (WIN32)
 	set(OLD_ABI_COMPAT_DEFAULT false)
 else()
@@ -100,185 +54,74 @@ else()
 endif()
 
 option(TYPE_DEPENDENT_DISPATCH "Enable type-dependent dispatch" ON)
-option(ENABLE_TRACING 
-	"Enable tracing support (slower, not recommended for deployment)" OFF)
-option(OLDABI_COMPAT 
-	"Enable compatibility with GCC and old GNUstep ABIs"
-	${OLD_ABI_COMPAT_DEFAULT})
+option(ENABLE_TRACING
+		"Enable tracing support (slower, not recommended for deployment)" OFF)
+option(OLDABI_COMPAT
+		"Enable compatibility with GCC and old GNUstep ABIs"
+		${OLD_ABI_COMPAT_DEFAULT})
 option(LEGACY_COMPAT "Enable legacy compatibility features" OFF)
 option(DEBUG_ARC_COMPAT
-	"Log warnings for classes that don't hit ARC fast paths" OFF)
+		"Log warnings for classes that don't hit ARC fast paths" OFF)
 option(ENABLE_OBJCXX "Enable support for Objective-C++" ON)
 option(TESTS "Enable building the tests")
 
+detect_arch(ARCHITECTURE)
+set(ARCHITECTURE ${ARCHITECTURE} CACHE STRING "Architecture Type")
+message(STATUS "Architecture: ${ARCHITECTURE}")
 
-# For release builds, we disable spamming the terminal with warnings about
-# selector type mismatches
-add_compile_definitions($<$<CONFIG:Release>:NO_SELECTOR_MISMATCH_WARNINGS>)
-add_compile_definitions($<$<BOOL:${TYPE_DEPENDENT_DISPATCH}>:TYPE_DEPENDENT_DISPATCH>)
-add_compile_definitions($<$<BOOL:${ENABLE_TRACING}>:WITH_TRACING=1>)
-add_compile_definitions($<$<BOOL:${DEBUG_ARC_COMPAT}>:DEBUG_ARC_COMPAT>)
+# Build configuration
 
-if (OLDABI_COMPAT)
-	list(APPEND libobjc_C_SRCS Source/legacy.c Source/abi_version.c Source/statics_loader.c)
-	add_definitions(-DOLDABI_COMPAT=1)
-endif()
+find_library(M_LIBRARY m)
+find_program(GNUSTEP_CONFIG gnustep-config)
 
-if (LEGACY_COMPAT)
-	list(APPEND libobjc_C_SRCS Source/legacy_malloc.c)
-	add_definitions(-DGNU_LEGACY)
-endif ()
+check_cxx_source_compiles("
+	#include <stdlib.h>
+	extern \"C\" {
+	__attribute__((weak))
+	void *__cxa_allocate_exception(size_t thrown_size) noexcept;
+	}
+	#include <exception>
+	int main() { return 0; }" CXA_ALLOCATE_EXCEPTION_NOEXCEPT_COMPILES)
 
-set(LIBOBJC_NAME "objc" CACHE STRING 
-	"Name of the Objective-C runtime library (e.g. objc2 for libobjc2)")
-
-add_compile_options("$<$<OR:$<COMPILE_LANGUAGE:OBJC>,$<COMPILE_LANGUAGE:OBJCXX>>:-Wno-deprecated-objc-isa-usage;-Wno-objc-root-class;-fobjc-runtime=gnustep-2.0>$<$<COMPILE_LANGUAGE:C>:-Xclang;-fexceptions>")
-add_compile_options($<$<STREQUAL:${CMAKE_SYSTEM_PROCESSOR},i686>:-march=i586>)
-
-set(INSTALL_TARGETS objc)
-
-if(WIN32)
-	if(CMAKE_SIZEOF_VOID_P EQUAL 8)
-		set(ASM_TARGET -m64)
-	else()
-		set(ASM_TARGET -m32)
-	endif()
-endif()
-
-
-if (MSVC)
-	set(ASSEMBLER ${CMAKE_ASM_COMPILER} CACHE STRING "Assembler to use with Visual Studio (must be gcc / clang!)")
-	message(STATUS "Using custom build commands to work around CMake bugs")
-	message(STATUS "ASM compiler: ${ASSEMBLER}")
-	# CMake is completely broken when you try to build assembly files on Windows.
-	add_custom_command(OUTPUT block_trampolines.obj
-		COMMAND echo ${ASSEMBLER} ${ASM_TARGET} -c "${CMAKE_SOURCE_DIR}/Source/block_trampolines.S" -o "${CMAKE_BINARY_DIR}/block_trampolines.obj"
-		COMMAND ${ASSEMBLER} ${ASM_TARGET} -c "${CMAKE_SOURCE_DIR}/Source/block_trampolines.S" -o "${CMAKE_BINARY_DIR}/block_trampolines.obj"
-		MAIN_DEPENDENCY Source/block_trampolines.S
-	)
-	add_custom_command(OUTPUT objc_msgSend.obj
-		COMMAND echo ${ASSEMBLER} ${ASM_TARGET} -c "${CMAKE_SOURCE_DIR}/Source/objc_msgSend.S" -o "${CMAKE_BINARY_DIR}/objc_msgSend.obj"
-		COMMAND ${ASSEMBLER} ${ASM_TARGET} -c "${CMAKE_SOURCE_DIR}/Source/objc_msgSend.S" -o "${CMAKE_BINARY_DIR}/objc_msgSend.obj"
-		MAIN_DEPENDENCY Source/objc_msgSend.S
-		DEPENDS Source/objc_msgSend.aarch64.S Source/objc_msgSend.arm.S Source/objc_msgSend.mips.S Source/objc_msgSend.x86-32.S Source/objc_msgSend.x86-64.S
-	)
-	set(libobjc_ASM_OBJS block_trampolines.obj objc_msgSend.obj)
-endif()
-
-
-
-if (WIN32)
-	message(STATUS "Using MSVC-compatible exception model")
-else ()
-	separate_arguments(EH_PERSONALITY_FLAGS NATIVE_COMMAND ${CMAKE_CXX_FLAGS})
-	if (CMAKE_CXX_COMPILER_TARGET)
-		list(APPEND EH_PERSONALITY_FLAGS "${CMAKE_CXX_COMPILE_OPTIONS_TARGET}${CMAKE_CXX_COMPILER_TARGET}")
-	endif ()
-	add_custom_command(OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/eh_trampoline.S
-		COMMAND ${CMAKE_CXX_COMPILER} ARGS ${EH_PERSONALITY_FLAGS} -fPIC -S "${CMAKE_SOURCE_DIR}/Source/eh_trampoline.cc" -o - -fexceptions -fno-inline | sed "s/__gxx_personality_v0/test_eh_personality/g" > "${CMAKE_BINARY_DIR}/eh_trampoline.S"
-		MAIN_DEPENDENCY Source/eh_trampoline.cc)
-	list(APPEND libobjc_ASM_SRCS ${CMAKE_CURRENT_BINARY_DIR}/eh_trampoline.S)
-	list(APPEND libobjc_CXX_SRCS Source/objcxx_eh.cc)
-	# Find libm for linking, as some versions of libc++ don't link against it
-	find_library(M_LIBRARY m)
-endif ()
-
-add_library(objc SHARED ${libobjc_C_SRCS} ${libobjc_ASM_SRCS} ${libobjc_OBJC_SRCS} ${libobjc_OBJCXX_SRCS} ${libobjc_ASM_OBJS})
-
-list(APPEND libobjc_CXX_SRCS ${libobjcxx_CXX_SRCS})
-target_sources(objc PRIVATE ${libobjc_CXX_SRCS})
-target_include_directories(objc
-		PRIVATE
-		third_party/robin-map/include)
-
-include(FindThreads)
-target_link_libraries(objc Threads::Threads)
-# Link against ntdll.dll for RtlRaiseException
-if (WIN32)
-	target_link_libraries(objc ntdll.dll)
-endif()
-
-
-set_target_properties(objc PROPERTIES
-	LINKER_LANGUAGE C
-	SOVERSION ${libobjc_VERSION}
-	OUTPUT_NAME ${LIBOBJC_NAME}
-	LINK_FLAGS "${objc_LINK_FLAGS}"
-	)
-
-set_property(TARGET PROPERTY NO_SONAME true)
-
-option(BUILD_STATIC_LIBOBJC "Build the static version of libobjc" OFF)
-if (BUILD_STATIC_LIBOBJC)
-	add_library(objc-static STATIC ${libobjc_C_SRCS} ${libobjc_ASM_SRCS} ${libobjc_OBJC_SRCS} ${libobjc_CXX_SRCS})
-	set_target_properties(objc-static PROPERTIES
-		POSITION_INDEPENDENT_CODE true
-		OUTPUT_NAME ${LIBOBJC_NAME})
-	list(APPEND INSTALL_TARGETS objc-static)
-endif ()
-
-# Explicitly link libm, as an implicit dependency of the C++ runtime
-if (M_LIBRARY)
-	target_link_libraries(objc ${M_LIBRARY})
-endif ()
-
-# Make weak symbols work on OS X
-if (APPLE)
-	set(CMAKE_SHARED_LIBRARY_CREATE_C_FLAGS
-		"${CMAKE_SHARED_LIBRARY_CREATE_C_FLAGS} -undefined dynamic_lookup")
-	set(CMAKE_C_LINK_FLAGS "${CMAKE_C_LINK_FLAGS} -Wl,-undefined,dynamic_lookup")
-	set(CMAKE_CXX_LINK_FLAGS "${CMAKE_CXX_LINK_FLAGS} -Wl,-undefined,dynamic_lookup")
-endif ()
+add_subdirectory(Source)
+add_subdirectory(Headers)
 
 #
 # Installation
 #
 
-
-find_program(GNUSTEP_CONFIG gnustep-config)
 if (GNUSTEP_CONFIG)
-	EXEC_PROGRAM(gnustep-config
-		ARGS "--installation-domain-for=libobjc2"
-		OUTPUT_VARIABLE DEFAULT_INSTALL_TYPE)
+	# If we have GNUstep environment variables, then default to installing in the
+	# GNUstep local environment.
+	execute_process(
+			COMMAND ${GNUSTEP_CONFIG} --installation-domain-for=libobjc2
+			OUTPUT_VARIABLE DEFAULT_INSTALL_TYPE)
+else()
+	set(DEFAULT_INSTALL_TYPE NONE)
 endif ()
-
-
-# If we have GNUstep environment variables, then default to installing in the
-# GNUstep local environment.
-if (DEFAULT_INSTALL_TYPE)
-else ()
-	set(DEFAULT_INSTALL_TYPE "NONE")
-endif ()
-
-if (NOT CMAKE_INSTALL_LIBDIR)
-	set(CMAKE_INSTALL_LIBDIR lib)
-endif ()
-
 
 set(GNUSTEP_INSTALL_TYPE ${DEFAULT_INSTALL_TYPE} CACHE STRING
 	"GNUstep installation type.  Options are NONE, SYSTEM, NETWORK or LOCAL.")
-if (${GNUSTEP_INSTALL_TYPE} STREQUAL "NONE")
-	SET(LIB_INSTALL_PATH "${CMAKE_INSTALL_LIBDIR}" CACHE STRING
-		"Subdirectory of the root prefix where libraries are installed.")
-	SET(HEADER_INSTALL_PATH "include")
-	SET(PC_INSTALL_PREFIX ${CMAKE_INSTALL_PREFIX})
-else ()
-	EXEC_PROGRAM(gnustep-config
-		ARGS "--variable=GNUSTEP_${GNUSTEP_INSTALL_TYPE}_LIBRARIES"
-		OUTPUT_VARIABLE LIB_INSTALL_PATH)
-	EXEC_PROGRAM(gnustep-config
-		ARGS "--variable=GNUSTEP_${GNUSTEP_INSTALL_TYPE}_HEADERS"
-		OUTPUT_VARIABLE HEADER_INSTALL_PATH)
-	SET(PC_INSTALL_PREFIX "/")
+if (NOT ${GNUSTEP_INSTALL_TYPE} STREQUAL "NONE")
+	set(CMAKE_INSTALL_PREFIX "/")
+	execute_process(
+			COMMAND ${GNUSTEP_CONFIG} "--variable=GNUSTEP_${GNUSTEP_INSTALL_TYPE}_LIBRARIES"
+			OUTPUT_VARIABLE CMAKE_INSTALL_LIBDIR
+			COMMAND_ERROR_IS_FATAL ANY)
+	execute_process(
+			COMMAND ${GNUSTEP_CONFIG} "--variable=GNUSTEP_${GNUSTEP_INSTALL_TYPE}_HEADERS"
+			OUTPUT_VARIABLE CMAKE_INSTALL_INCLUDEDIR
+			COMMAND_ERROR_IS_FATAL ANY)
+	GNUInstallDirs_get_absolute_install_dir(CMAKE_INSTALL_FULL_LIBDIR CMAKE_INSTALL_LIBDIR LIBDIR)
+	GNUInstallDirs_get_absolute_install_dir(CMAKE_INSTALL_FULL_INCLUDEDIR CMAKE_INSTALL_INCLUDEDIR INCLUDEDIR)
 endif ()
 message(STATUS "GNUstep install type set to ${GNUSTEP_INSTALL_TYPE}")
 
-install(TARGETS ${INSTALL_TARGETS}
-	RUNTIME DESTINATION ${LIB_INSTALL_PATH}
-	LIBRARY DESTINATION ${LIB_INSTALL_PATH}
-	ARCHIVE DESTINATION ${LIB_INSTALL_PATH})
 install(TARGETS objc
-	FILE_SET HEADERS DESTINATION "${HEADER_INSTALL_PATH}")
+	RUNTIME DESTINATION ${CMAKE_INSTALL_LIBDIR}
+	LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
+	ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
+	FILE_SET HEADERS DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}")
 
 set(CPACK_GENERATOR TGZ CACHE STRING
 	"Installer types to generate.  Sensible options include TGZ, RPM and DEB")
@@ -287,9 +130,6 @@ set(CPACK_PACKAGE_DESCRIPTION_SUMMARY "GNUstep Objective-C Runtime")
 set(CPACK_PACKAGE_VENDOR "The GNUstep Project")
 set(CPACK_PACKAGE_DESCRIPTION_FILE "${CMAKE_CURRENT_SOURCE_DIR}/README.md")
 set(CPACK_RESOURCE_FILE_LICENSE "${CMAKE_CURRENT_SOURCE_DIR}/COPYING")
-set(CPACK_PACKAGE_VERSION_MAJOR "2")
-set(CPACK_PACKAGE_VERSION_MINOR "2")
-set(CPACK_PACKAGE_VERSION_PATCH "0")
 set(CPACK_PACKAGE_CONTACT "GNUstep Developer <gnustep-dev@gnu.org>")
 set(CPACK_PACKAGE_INSTALL_DIRECTORY "CMake ${CMake_VERSION_MAJOR}.${CMake_VERSION_MINOR}")
 if (UNIX)
@@ -305,11 +145,11 @@ if (M_LIBRARY)
 endif ()
 list(REMOVE_DUPLICATES PC_LIBS_PRIVATE)
 string(REPLACE  ";" " -l" PC_LIBS_PRIVATE "${PC_LIBS_PRIVATE}")
-set(PC_LIBS_PRIVATE "Libs.private: -l${PC_LIBS_PRIVATE}")
+set(PC_LIBS_PRIVATE "-l${PC_LIBS_PRIVATE}")
 
 configure_file("libobjc.pc.in" "libobjc.pc" @ONLY)
 install(FILES "${CMAKE_CURRENT_BINARY_DIR}/libobjc.pc"
-	DESTINATION "${LIB_INSTALL_PATH}/pkgconfig"
+	DESTINATION "${CMAKE_INSTALL_LIBDIR}/pkgconfig"
 )
 
 
@@ -326,17 +166,3 @@ if (TESTS)
 	enable_testing()
 	add_subdirectory(Test)
 endif (TESTS)
-
-CHECK_CXX_SOURCE_COMPILES("
-	#include <stdlib.h>
-	extern \"C\" {
-	__attribute__((weak))
-	void *__cxa_allocate_exception(size_t thrown_size) noexcept;
-	}
-	#include <exception>
-	int main() { return 0; }" CXA_ALLOCATE_EXCEPTION_NOEXCEPT_COMPILES)
-
-add_compile_definitions($<IF:$<BOOL:${CXA_ALLOCATE_EXCEPTION_NOEXCEPT_COMPILES}>,CXA_ALLOCATE_EXCEPTION_SPECIFIER=noexcept,CXA_ALLOCATE_EXCEPTION_SPECIFIER>)
-
-add_subdirectory(Headers)
-add_subdirectory(Source)

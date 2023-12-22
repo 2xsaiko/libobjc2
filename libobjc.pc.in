@@ -1,12 +1,12 @@
-prefix=@PC_INSTALL_PREFIX@
+prefix=@CMAKE_INSTALL_PREFIX@
 exec_prefix=${prefix}
-libdir=${exec_prefix}/@LIB_INSTALL_PATH@
-includedir=${prefix}/@HEADER_INSTALL_PATH@
+libdir=${exec_prefix}/@CMAKE_INSTALL_LIBDIR@
+includedir=${prefix}/@CMAKE_INSTALL_INCLUDEDIR@
 
 Name: libobjc
 Description: GNUstep Objective-C runtime library
-Version: @CPACK_PACKAGE_VERSION_MAJOR@.@CPACK_PACKAGE_VERSION_MINOR@.@CPACK_PACKAGE_VERSION_PATCH@
+Version: @CMAKE_PROJECT_VERSION@
 
 Cflags: -I${includedir}
 Libs: -L${libdir} -lobjc
-@PC_LIBS_PRIVATE@
+Libs.private: @PC_LIBS_PRIVATE@
