@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.16)
 
-project(libobjc C ASM CXX)
+project(libobjc VERSION 4.6 LANGUAGES C ASM CXX)
 
 if (NOT "${CMAKE_C_COMPILER_ID}" MATCHES Clang*)
 	message(WARNING "WARNING: It is strongly recommended that you compile with clang")
@@ -24,8 +24,6 @@ list(APPEND CMAKE_MODULE_PATH
 		${CMAKE_SOURCE_DIR}/CMake)
 
 include(DetectArch)
-
-set(libobjc_VERSION 4.6)
 
 
 if (MSVC)
